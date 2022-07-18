@@ -102,11 +102,13 @@ RUN set -ex && git clone --recursive --branch ${MONERO_BRANCH} \
     https://github.com/monero-project/monero . \
     && test `git rev-parse HEAD` = ${MONERO_COMMIT_HASH} || exit 1 \
     && case ${TARGETARCH:-amd64} in \
-        "arm64") CMAKE_ARCH="armv8-a"; CMAKE_BUILD_TAG="linux-armv8" ;; \
-        "amd64") CMAKE_ARCH="x86-64"; CMAKE_BUILD_TAG="linux-x64" ;; \
+        "arm64") CMAKE_ARCH="armv8-a"; CMAKE_BUILD_TAG="linux-armv8"; MAKE_TARGET="arm-linux-gnueabihf" ;; \
+        "amd64") CMAKE_ARCH="x86-64"; CMAKE_BUILD_TAG="linux-x64"; MAKE_TARGET="x86_64-linux-gnu" ;; \
         *) echo "Dockerfile does not support this platform"; exit 1 ;; \
     esac \
-    && mkdir -p build/release && cd build/release \
+    && cd contrib/depends && $(MAKE) HOST=$(target) && cd ../.. && mkdir -p build/$(target)/release \
+	&& cd build/$(target)/release && cmake -DCMAKE_TOOLCHAIN_FILE=$(CURDIR)/contrib/depends/$(target)/share/toolchain.cmake ../../.. \
+    && cd ../../ && mkdir -p build/release && cd build/release \
     && cmake -D ARCH=${CMAKE_ARCH} -D STATIC=ON -D BUILD_64=ON -D CMAKE_BUILD_TYPE=Release -D BUILD_TAG=${CMAKE_BUILD_TAG} ../.. \
     && cd /monero && nice -n 19 ionice -c2 -n7 make -j${NPROC:-$(nproc)} -C build/release daemon
 
